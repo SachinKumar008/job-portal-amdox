@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Post a Job - Job Portal</title>
+<link rel="stylesheet" href="assets/css/main.css">
+<link rel="stylesheet" href="assets/css/mobile-responsive.css">
+<link rel="stylesheet" href="assets/css/portal.css">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+</head>
+<body>
+
+<nav class="navbar">
+  <div class="container">
+    <a href="index.html" class="logo"><div class="logo-icon">JP</div>Job Portal</a>
+    <ul class="nav-links" id="guest-nav"><li><a href="login.html" class="btn btn-primary">Login</a></li></ul>
+    <ul class="nav-links" id="logged-nav" style="display:none">
+      <li><a href="dashboard.html">Dashboard</a></li>
+      <li><span id="user-name" style="color:#2563eb;font-weight:600;"></span></li>
+      <li><a href="#" id="logout-btn" class="btn btn-secondary">Logout</a></li>
+    </ul>
+  </div>
+</nav>
+
+<div class="page-header">
+  <div class="container">
+    <h1 id="page-title">Post a New Job</h1>
+    <p>Fill in the details to attract the right candidates</p>
+  </div>
+</div>
+
+<div class="page-content">
+  <!-- BACK BUTTON -->
+  <a href="dashboard.html" style="color:#2563eb;font-weight:600;text-decoration:none;display:inline-flex;align-items:center;gap:0.4rem;margin-bottom:1.5rem;">
+    ← Back to Dashboard
+  </a>
+
+  <div class="form-container-wide">
+    <form id="job-form">
+      <div class="form-group">
+        <label>Job Title *</label>
+        <input type="text" id="job_title" class="form-control" placeholder="e.g. Senior Frontend Developer" required>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label>Job Type *</label>
+          <select id="job_type" class="form-control form-select" required>
+            <option value="">Select type</option>
+            <option value="full_time">Full Time</option>
+            <option value="part_time">Part Time</option>
+            <option value="contract">Contract</option>
+            <option value="internship">Internship</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Location *</label>
+          <input type="text" id="location" class="form-control" placeholder="e.g. Mumbai or Remote" required>
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label>Min Salary (₹/month)</label>
+          <input type="number" id="salary_min" class="form-control" placeholder="e.g. 30000">
+        </div>
+        <div class="form-group">
+          <label>Max Salary (₹/month)</label>
+          <input type="number" id="salary_max" class="form-control" placeholder="e.g. 60000">
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label>Job Description *</label>
+        <textarea id="job_description" class="form-control" rows="5" placeholder="Describe the role, company culture, what makes this opportunity exciting…" required></textarea>
+      </div>
+
+      <div class="form-group">
+        <label>Responsibilities</label>
+        <textarea id="responsibilities" class="form-control" rows="4" placeholder="List key responsibilities, one per line…"></textarea>
+      </div>
+
+      <div class="form-group">
+        <label>Qualifications / Requirements</label>
+        <textarea id="qualifications" class="form-control" rows="4" placeholder="List required skills and qualifications, one per line…"></textarea>
+      </div>
+
+      <!-- Edit mode: show active toggle -->
+      <div class="form-group" id="active-toggle" style="display:none;">
+        <label style="display:flex;align-items:center;gap:0.75rem;cursor:pointer;">
+          <input type="checkbox" id="is_active" checked style="width:18px;height:18px;">
+          <span>Job is active (visible to job seekers)</span>
+        </label>
+      </div>
+
+      <div class="form-actions">
+        <a href="dashboard.html" class="btn btn-secondary">Cancel</a>
+        <button type="submit" id="submit-btn" class="btn btn-primary">Post Job</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<footer class="footer"><div class="container"><div class="footer-bottom"><p>&copy; 2026 Job Portal</p></div></div></footer>
+
+<script src="assets/js/config.js"></script>
+<script src="assets/js/api.js"></script>
+<script>
+const user  = Auth.guard('employer'); // only employers
+const editId= new URLSearchParams(location.search).get('edit');
+
+// Load job data for editing
+if (editId) {
+  document.getElementById('page-title').textContent = 'Edit Job';
+  document.getElementById('submit-btn').textContent = 'Update Job';
+  document.getElementById('active-toggle').style.display = 'block';
+
+  API.getJob(editId).then(res => {
+    if (!res.success) { UI.toast('Job not found','error'); return; }
+    const j = res.job;
+    document.getElementById('job_title').value      = j.job_title;
+    document.getElementById('job_type').value       = j.job_type;
+    document.getElementById('location').value       = j.location;
+    document.getElementById('salary_min').value     = j.salary_min || '';
+    document.getElementById('salary_max').value     = j.salary_max || '';
+    document.getElementById('job_description').value= j.job_description;
+    document.getElementById('responsibilities').value=j.responsibilities||'';
+    document.getElementById('qualifications').value = j.qualifications||'';
+    document.getElementById('is_active').checked    = j.is_active == 1;
+  });
+}
+
+document.getElementById('job-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  UI.setLoading('submit-btn', true);
+
+  const data = {
+    job_title:       document.getElementById('job_title').value.trim(),
+    job_type:        document.getElementById('job_type').value,
+    location:        document.getElementById('location').value.trim(),
+    salary_min:      document.getElementById('salary_min').value,
+    salary_max:      document.getElementById('salary_max').value,
+    job_description: document.getElementById('job_description').value.trim(),
+    responsibilities:document.getElementById('responsibilities').value.trim(),
+    qualifications:  document.getElementById('qualifications').value.trim(),
+    is_active:       document.getElementById('is_active')?.checked ? 1 : 0,
+  };
+
+  const result = editId
+    ? await API.updateJob(editId, data)
+    : await API.createJob(data);
+
+  UI.setLoading('submit-btn', false);
+
+  if (result.success) {
+    UI.toast(editId ? 'Job updated!' : 'Job posted successfully! 🎉', 'success');
+    setTimeout(() => window.location.href = 'dashboard.html', 1200);
+  } else {
+    UI.toast(result.error || 'Failed to save job', 'error');
+  }
+});
+</script>
+</body>
+</html>

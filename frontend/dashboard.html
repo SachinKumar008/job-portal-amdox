@@ -1,0 +1,399 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Dashboard - Job Portal</title>
+<link rel="stylesheet" href="assets/css/mobile-responsive.css">
+<link rel="stylesheet" href="assets/css/portal.css">
+<link rel="stylesheet" href="assets/css/main.css">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+  .quick-actions{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:1rem;margin-bottom:2rem}
+  .quick-action-btn{background:#fff;border:2px solid #e5e7eb;border-radius:12px;padding:1.5rem;text-align:center;cursor:pointer;transition:.3s;text-decoration:none;display:block}
+  .quick-action-btn:hover{border-color:#2563eb;background:#eff6ff;transform:translateY(-2px)}
+  .quick-action-icon{width:48px;height:48px;margin:0 auto 0.75rem;background:linear-gradient(135deg,#2563eb,#3b82f6);border-radius:12px;display:flex;align-items:center;justify-content:center;color:#fff;font-size:1.5rem}
+  .quick-action-title{font-weight:700;color:#1f2937;margin-bottom:0.25rem}
+  .quick-action-desc{font-size:0.85rem;color:#6b7280}
+  .activity-feed{background:#fff;border-radius:14px;padding:1.5rem;box-shadow:0 2px 12px rgba(0,0,0,0.06)}
+  .activity-item{display:flex;gap:1rem;padding:1rem 0;border-bottom:1px solid #f3f4f6}
+  .activity-item:last-child{border-bottom:none}
+  .activity-icon{width:40px;height:40px;border-radius:50%;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:1.2rem}
+  .activity-icon.success{background:#d1fae5;color:#065f46}
+  .activity-icon.info{background:#dbeafe;color:#1e40af}
+  .activity-icon.warning{background:#fef3c7;color:#92400e}
+  .activity-content{flex:1}
+  .activity-title{font-weight:600;color:#1f2937;margin-bottom:0.25rem}
+  .activity-desc{font-size:0.9rem;color:#6b7280}
+  .activity-time{font-size:0.8rem;color:#9ca3af}
+  .chart-container{background:#fff;border-radius:14px;padding:1.5rem;box-shadow:0 2px 12px rgba(0,0,0,0.06);margin-bottom:2rem}
+  .chart-container h3{font-size:1.1rem;font-weight:700;margin-bottom:1rem;color:#1f2937}
+  .dashboard-grid{display:grid;grid-template-columns:2fr 1fr;gap:2rem;margin-bottom:2rem}
+  @media(max-width:1024px){.dashboard-grid{grid-template-columns:1fr}}
+</style>
+<script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
+<script src="assets/js/email-notifications.js"></script>
+</head>
+<body>
+
+<nav class="navbar">
+  <div class="container">
+    <a href="index.html" class="logo"><div class="logo-icon">JP</div>Job Portal</a>
+    <ul class="nav-links" id="guest-nav"><li><a href="login.html" class="btn btn-primary">Login</a></li></ul>
+    <ul class="nav-links" id="logged-nav" style="display:none">
+      <li><a href="jobs.html">Browse Jobs</a></li>
+      <li><a href="dashboard.html">Dashboard</a></li>
+      <li><a href="profile.html">Profile</a></li>
+      <li><span id="user-name" style="color:#2563eb;font-weight:600;"></span></li>
+      <li><a href="#" id="logout-btn" class="btn btn-secondary">Logout</a></li>
+    </ul>
+  </div>
+</nav>
+
+<div class="page-header">
+  <div class="container">
+    <h1 id="dash-title">Dashboard</h1>
+    <p id="dash-subtitle">Welcome back!</p>
+  </div>
+</div>
+
+<div class="page-content" id="dashboard-content">
+  <div class="skeleton" style="height:100px;border-radius:14px;margin-bottom:1rem;"></div>
+  <div class="skeleton" style="height:300px;border-radius:14px;"></div>
+</div>
+
+<footer class="footer"><div class="container"><div class="footer-bottom"><p>&copy; 2026 Job Portal</p></div></div></footer>
+
+<script src="assets/js/config.js"></script>
+<script src="assets/js/api.js"></script>
+<script>
+const user = Auth.guard();
+
+async function loadDashboard() {
+  document.getElementById('dash-title').textContent  = `Welcome back, ${user.full_name}! 👋`;
+  document.getElementById('dash-subtitle').textContent = user.user_type === 'employer'
+    ? 'Manage your job postings and applicants'
+    : 'Track your applications and find new opportunities';
+
+  const statsRes = await API.getStats();
+  const stats = statsRes.stats || {};
+
+  if (user.user_type === 'employer') {
+    await loadEmployerDashboard(stats);
+  } else {
+    await loadJobSeekerDashboard(stats);
+  }
+}
+
+// ── EMPLOYER DASHBOARD ────────────────────────────────────────────
+async function loadEmployerDashboard(stats) {
+  const jobsRes = await API.getMyJobs();
+  const jobs = jobsRes.jobs || [];
+
+  document.getElementById('dashboard-content').innerHTML = `
+    <!-- Stats Cards -->
+    <div class="stats-grid">
+      <div class="stat-card">
+        <div class="stat-icon" style="background:#dbeafe;color:#2563eb;">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v16"/></svg>
+        </div>
+        <div><div class="stat-label">Total Jobs</div><div class="stat-value">${stats.total_jobs||0}</div></div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon" style="background:#d1fae5;color:#10b981;">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+        </div>
+        <div><div class="stat-label">Active Jobs</div><div class="stat-value">${stats.active_jobs||0}</div></div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon" style="background:#ede9fe;color:#7c3aed;">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></svg>
+        </div>
+        <div><div class="stat-label">Total Applicants</div><div class="stat-value">${stats.total_applications||0}</div></div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon" style="background:#fef3c7;color:#d97706;">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+        </div>
+        <div><div class="stat-label">Pending Review</div><div class="stat-value">${stats.pending_applications||0}</div></div>
+      </div>
+    </div>
+
+    <!-- Quick Actions -->
+    <div class="quick-actions">
+      <a href="post-job.html" class="quick-action-btn">
+        <div class="quick-action-icon">✚</div>
+        <div class="quick-action-title">Post New Job</div>
+        <div class="quick-action-desc">Create a job listing</div>
+      </a>
+      <a href="profile.html" class="quick-action-btn">
+        <div class="quick-action-icon">🏢</div>
+        <div class="quick-action-title">Company Profile</div>
+        <div class="quick-action-desc">Update your details</div>
+      </a>
+    </div>
+
+    <!-- Main Content Grid -->
+    <div class="dashboard-grid">
+      <!-- Jobs Table -->
+      <div>
+        <div class="section-card">
+          <div class="section-card-header">
+            <h2>My Job Listings</h2>
+            <a href="post-job.html" class="btn btn-primary">+ Post Job</a>
+          </div>
+          ${jobs.length === 0 ? `
+            <div class="empty-state">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="width:64px;height:64px;margin:0 auto 1rem;opacity:0.4">
+                <rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v16"/>
+              </svg>
+              <h3>No jobs posted yet</h3>
+              <p>Post your first job to start receiving applications</p>
+              <a href="post-job.html" class="btn btn-primary" style="margin-top:1rem;">Post a Job</a>
+            </div>` : `
+            <div style="overflow-x:auto;">
+            <table class="data-table">
+              <thead><tr>
+                <th>Job Title</th><th>Type</th><th>Applicants</th><th>Status</th><th>Actions</th>
+              </tr></thead>
+              <tbody>
+                ${jobs.slice(0,5).map(j=>`<tr>
+                  <td><strong>${j.job_title}</strong><br><small style="color:#6b7280;">${j.location}</small></td>
+                  <td>${UI.jobTypeBadge(j.job_type)}</td>
+                  <td>
+                    <a href="applicants.html?job_id=${j.job_id}" style="color:#2563eb;font-weight:600;text-decoration:none;">
+                      ${j.application_count} applicant${j.application_count!=1?'s':''}
+                    </a>
+                  </td>
+                  <td>${j.is_active ? '<span class="badge badge-green">Active</span>' : '<span class="badge badge-gray">Inactive</span>'}</td>
+                  <td>
+                    <a href="post-job.html?edit=${j.job_id}" class="btn btn-secondary" style="padding:0.35rem 0.75rem;font-size:0.85rem;">Edit</a>
+                  </td>
+                </tr>`).join('')}
+              </tbody>
+            </table>
+            </div>
+            ${jobs.length > 5 ? `<p style="text-align:center;margin-top:1rem;"><a href="post-job.html" style="color:#2563eb;font-weight:600;">View all ${jobs.length} jobs →</a></p>` : ''}`}
+        </div>
+      </div>
+
+      <!-- Activity Feed -->
+      <div>
+        <div class="activity-feed">
+          <h3 style="font-size:1.1rem;font-weight:700;margin-bottom:1rem;">Recent Activity</h3>
+          <div id="activity-list">Loading...</div>
+        </div>
+      </div>
+    </div>`;
+
+  loadEmployerActivity(jobs);
+}
+
+function loadEmployerActivity(jobs) {
+  const activities = [];
+  
+  jobs.slice(0,5).forEach(job => {
+    if (job.application_count > 0) {
+      activities.push({
+        icon: '👤',
+        iconClass: 'info',
+        title: `${job.application_count} new applicant${job.application_count!=1?'s':''}`,
+        desc: `for ${job.job_title}`,
+        time: 'Today',
+        action: `<a href="applicants.html?job_id=${job.job_id}" style="color:#2563eb;font-size:0.85rem;font-weight:600;">View →</a>`
+      });
+    }
+  });
+
+  if (activities.length === 0) {
+    document.getElementById('activity-list').innerHTML = `
+      <div style="text-align:center;padding:2rem;color:#9ca3af;">
+        <p>No recent activity</p>
+        <p style="font-size:0.9rem;margin-top:0.5rem;">Applications will appear here</p>
+      </div>`;
+  } else {
+    document.getElementById('activity-list').innerHTML = activities.map(a => `
+      <div class="activity-item">
+        <div class="activity-icon ${a.iconClass}">${a.icon}</div>
+        <div class="activity-content">
+          <div class="activity-title">${a.title}</div>
+          <div class="activity-desc">${a.desc}</div>
+          <div class="activity-time">${a.time}</div>
+        </div>
+        ${a.action || ''}
+      </div>`).join('');
+  }
+}
+
+// ── JOB SEEKER DASHBOARD ──────────────────────────────────────────
+async function loadJobSeekerDashboard(stats) {
+  const appsRes = await API.getMyApps();
+  const apps = appsRes.applications || [];
+
+  document.getElementById('dashboard-content').innerHTML = `
+    <div class="stats-grid">
+      <div class="stat-card">
+        <div class="stat-icon" style="background:#dbeafe;color:#2563eb;">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+        </div>
+        <div><div class="stat-label">Applied</div><div class="stat-value">${stats.total_applications||0}</div></div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon" style="background:#fef3c7;color:#d97706;">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+        </div>
+        <div><div class="stat-label">Pending</div><div class="stat-value">${stats.pending||0}</div></div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon" style="background:#d1fae5;color:#10b981;">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+        </div>
+        <div><div class="stat-label">Accepted</div><div class="stat-value">${stats.accepted||0}</div></div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon" style="background:#dbeafe;color:#2563eb;">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v16"/></svg>
+        </div>
+        <div><div class="stat-label">Jobs Available</div><div class="stat-value">${stats.total_jobs||0}</div></div>
+      </div>
+    </div>
+
+    <div class="quick-actions">
+      <a href="jobs.html" class="quick-action-btn">
+        <div class="quick-action-icon">🔍</div>
+        <div class="quick-action-title">Browse Jobs</div>
+        <div class="quick-action-desc">Find new opportunities</div>
+      </a>
+      <a href="profile.html" class="quick-action-btn">
+        <div class="quick-action-icon">👤</div>
+        <div class="quick-action-title">Update Profile</div>
+        <div class="quick-action-desc">Keep your info current</div>
+      </a>
+    </div>
+
+    <div class="dashboard-grid">
+      <!-- Applications List -->
+      <div>
+        <div class="section-card">
+          <div class="section-card-header">
+            <h2>My Applications</h2>
+            <a href="jobs.html" class="btn btn-primary">Browse Jobs</a>
+          </div>
+          ${apps.length === 0 ? `
+            <div class="empty-state">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="width:64px;height:64px;margin:0 auto 1rem;opacity:0.4">
+                <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/>
+              </svg>
+              <h3>No applications yet</h3>
+              <p>Start applying to your dream jobs!</p>
+              <a href="jobs.html" class="btn btn-primary" style="margin-top:1rem;">Browse Jobs</a>
+            </div>` : `
+            <div style="overflow-x:auto;">
+            <table class="data-table">
+              <thead><tr>
+                <th>Job Title</th><th>Company</th><th>Status</th><th>Applied</th>
+              </tr></thead>
+              <tbody>
+                ${apps.slice(0,5).map(a=>`<tr>
+                  <td><a href="job-detail.html?id=${a.job_id}" style="color:#2563eb;font-weight:600;text-decoration:none;">${a.job_title}</a><br><small style="color:#6b7280;">${a.location}</small></td>
+                  <td>${a.company_name||'-'}</td>
+                  <td>${UI.statusBadge(a.status)}</td>
+                  <td>${UI.formatDate(a.applied_at)}</td>
+                </tr>`).join('')}
+              </tbody>
+            </table>
+            </div>
+            ${apps.length > 5 ? `<p style="text-align:center;margin-top:1rem;"><a href="profile.html" style="color:#2563eb;font-weight:600;">View all ${apps.length} applications →</a></p>` : ''}`}
+        </div>
+
+        <!-- Application Status Chart -->
+        ${apps.length > 0 ? `
+        <div class="chart-container">
+          <h3>Application Status Overview</h3>
+          <canvas id="statusChart" style="max-height:250px;"></canvas>
+        </div>` : ''}
+      </div>
+
+      <!-- Activity -->
+      <div>
+        <div class="activity-feed">
+          <h3 style="font-size:1.1rem;font-weight:700;margin-bottom:1rem;">Recent Activity</h3>
+          <div id="activity-list">Loading...</div>
+        </div>
+      </div>
+    </div>`;
+
+  if (apps.length > 0) {
+    loadJobSeekerChart(stats);
+    loadJobSeekerActivity(apps);
+  } else {
+    loadJobSeekerActivity([]);
+  }
+}
+
+function loadJobSeekerChart(stats) {
+  const ctx = document.getElementById('statusChart');
+  if (!ctx) return;
+
+  new Chart(ctx, {
+    type: 'doughnut',
+    data: {
+      labels: ['Pending', 'Reviewing', 'Accepted', 'Rejected'],
+      datasets: [{
+        data: [stats.pending||0, stats.reviewing||0, stats.accepted||0, stats.rejected||0],
+        backgroundColor: ['#fbbf24', '#3b82f6', '#10b981', '#ef4444'],
+        borderWidth: 0
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: true,
+      plugins: {
+        legend: { position: 'bottom' }
+      }
+    }
+  });
+}
+
+function loadJobSeekerActivity(apps) {
+  if (apps.length === 0) {
+    document.getElementById('activity-list').innerHTML = `
+      <div style="text-align:center;padding:2rem;color:#9ca3af;">
+        <p>No recent activity</p>
+        <p style="font-size:0.9rem;margin-top:0.5rem;">Your applications will appear here</p>
+      </div>`;
+    return;
+  }
+
+  const activities = apps.slice(0,5).map(app => {
+    const icons = {
+      pending: { icon: '⏳', class: 'warning' },
+      reviewing: { icon: '👀', class: 'info' },
+      accepted: { icon: '✅', class: 'success' },
+      rejected: { icon: '❌', class: 'warning' }
+    };
+    const i = icons[app.status] || icons.pending;
+    return {
+      icon: i.icon,
+      iconClass: i.class,
+      title: `Application ${app.status}`,
+      desc: app.job_title,
+      time: UI.formatDate(app.applied_at)
+    };
+  });
+
+  document.getElementById('activity-list').innerHTML = activities.map(a => `
+    <div class="activity-item">
+      <div class="activity-icon ${a.iconClass}">${a.icon}</div>
+      <div class="activity-content">
+        <div class="activity-title">${a.title}</div>
+        <div class="activity-desc">${a.desc}</div>
+        <div class="activity-time">${a.time}</div>
+      </div>
+    </div>`).join('');
+}
+
+loadDashboard();
+</script>
+</body>
+</html>

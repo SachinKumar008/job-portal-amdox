@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Browse Jobs - Job Portal</title>
+<link rel="stylesheet" href="assets/css/main.css">
+<link rel="stylesheet" href="assets/css/mobile-responsive.css">
+<link rel="stylesheet" href="assets/css/portal.css">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+</head>
+<body>
+
+<!-- NAV -->
+<nav class="navbar">
+  <div class="container">
+    <a href="index.html" class="logo"><div class="logo-icon">JP</div>Job Portal</a>
+    <ul class="nav-links" id="guest-nav">
+      <li><a href="jobs.html">Browse Jobs</a></li>
+      <li><a href="login.html" class="btn btn-secondary">Login</a></li>
+      <li><a href="register.html" class="btn btn-primary">Register</a></li>
+    </ul>
+    <ul class="nav-links" id="logged-nav" style="display:none">
+      <li><a href="jobs.html">Browse Jobs</a></li>
+      <li><a href="dashboard.html">Dashboard</a></li>
+      <li><a href="profile.html">Profile</a></li>
+      <li><span id="user-name" style="color:#2563eb;font-weight:600;"></span></li>
+      <li><a href="#" id="logout-btn" class="btn btn-secondary">Logout</a></li>
+    </ul>
+  </div>
+</nav>
+
+<!-- HEADER -->
+<div class="page-header">
+  <div class="container">
+    <h1>Find Your Perfect Job</h1>
+    <p>Browse thousands of opportunities from top employers</p>
+  </div>
+</div>
+
+<div class="page-content">
+
+  <!-- SEARCH BAR -->
+  <div class="search-bar">
+    <div class="form-group">
+      <label>Keyword</label>
+      <input class="form-control" id="s-keyword" placeholder="Job title, skill…">
+    </div>
+    <div class="form-group">
+      <label>Location</label>
+      <input class="form-control" id="s-location" placeholder="City, Remote…">
+    </div>
+    <div class="form-group">
+      <label>Job Type</label>
+      <select class="form-control form-select" id="s-type">
+        <option value="">All Types</option>
+        <option value="full_time">Full Time</option>
+        <option value="part_time">Part Time</option>
+        <option value="contract">Contract</option>
+        <option value="internship">Internship</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label>Min Salary (₹)</label>
+      <input class="form-control" id="s-salary" placeholder="e.g. 30000" type="number">
+    </div>
+    <button class="btn btn-primary" onclick="loadJobs()">Search</button>
+    <button class="btn btn-secondary" onclick="clearSearch()">Clear</button>
+  </div>
+
+  <!-- RESULTS COUNT -->
+  <p id="results-count" style="color:#6b7280;margin-bottom:1rem;font-weight:500;"></p>
+
+  <!-- JOB CARDS -->
+  <div class="jobs-grid" id="jobs-grid">
+    <!-- loaded by JS -->
+    <div class="skeleton" style="height:200px;border-radius:14px;"></div>
+    <div class="skeleton" style="height:200px;border-radius:14px;"></div>
+    <div class="skeleton" style="height:200px;border-radius:14px;"></div>
+  </div>
+</div>
+
+<footer class="footer"><div class="container"><div class="footer-bottom"><p>&copy; 2026 Job Portal - AMDOX Internship Project</p></div></div></footer>
+
+<script src="assets/js/config.js"></script>
+<script src="assets/js/api.js"></script>
+<script>
+async function loadJobs() {
+  const keyword = document.getElementById('s-keyword').value.trim();
+  const location= document.getElementById('s-location').value.trim();
+  const type    = document.getElementById('s-type').value;
+  const salary  = document.getElementById('s-salary').value;
+
+  const params = new URLSearchParams();
+  if (keyword)  params.set('search',   keyword);
+  if (location) params.set('location', location);
+  if (type)     params.set('job_type', type);
+  if (salary)   params.set('salary_min', salary);
+
+  const q = params.toString() ? '?' + params.toString() : '';
+  const result = await API.getJobs(q);
+
+  const grid = document.getElementById('jobs-grid');
+  const count = document.getElementById('results-count');
+
+  if (!result.success) {
+    grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1"><h3>Failed to load jobs</h3><p>${result.error}</p></div>`;
+    return;
+  }
+
+  count.textContent = `${result.count} job${result.count !== 1 ? 's' : ''} found`;
+
+  if (result.jobs.length === 0) {
+    grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+      <h3>No jobs found</h3><p>Try adjusting your search filters</p></div>`;
+    return;
+  }
+
+  grid.innerHTML = result.jobs.map(job => `
+    <a class="job-card" href="job-detail.html?id=${job.job_id}">
+      <div class="job-card-header">
+        <div>
+          <div class="job-card-company">${job.company_name || job.employer_name}</div>
+          <div class="job-card-title">${job.job_title}</div>
+        </div>
+        ${UI.jobTypeBadge(job.job_type)}
+      </div>
+      <div class="job-card-meta">
+        <span>📍 ${job.location}</span>
+      </div>
+      <div class="job-card-salary">${UI.formatSalary(job.salary_min, job.salary_max)}</div>
+      <div class="job-card-footer">
+        <span class="job-card-date">Posted ${UI.formatDate(job.created_at)}</span>
+        <span class="btn btn-primary" style="padding:0.4rem 1rem;font-size:0.85rem;">View Job</span>
+      </div>
+    </a>`).join('');
+}
+
+function clearSearch() {
+  document.getElementById('s-keyword').value  = '';
+  document.getElementById('s-location').value = '';
+  document.getElementById('s-type').value     = '';
+  document.getElementById('s-salary').value   = '';
+  loadJobs();
+}
+
+// Load on page load
+loadJobs();
+
+// Search on Enter key
+document.addEventListener('keydown', e => { if (e.key === 'Enter') loadJobs(); });
+</script>
+</body>
+</html>

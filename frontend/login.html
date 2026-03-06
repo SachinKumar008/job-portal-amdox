@@ -1,73 +1,153 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Login - Job Portal</title>
-    <link rel="stylesheet" href="assets/css/main.css">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Login - Job Portal</title>
+<link rel="stylesheet" href="assets/css/main.css">
+<link rel="stylesheet" href="assets/css/mobile-responsive.css">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  .msg-success { background:#10b981; color:white; padding:1rem; border-radius:8px; margin-bottom:1rem; font-weight:600; }
+  .msg-error   { background:#fee2e2; color:#991b1b; padding:1rem; border-radius:8px; margin-bottom:1rem; border:1px solid #fca5a5; line-height:1.6; }
+  .field-error { color:#ef4444; font-size:.85rem; margin-top:.25rem; display:none; }
+  .field-error.show { display:block; }
+  input.error  { border-color:#ef4444 !important; }
+  code         { background:#f3f4f6; padding:.1rem .35rem; border-radius:4px; font-size:.88rem; }
+</style>
 </head>
 <body>
-    <!-- NAVIGATION -->
-    <nav class="navbar">
-        <div class="container">
-            <a href="index.html" class="logo">
-                <div class="logo-icon">JP</div>
-                Job Portal
-            </a>
-            <ul class="nav-links">
-                <li><a href="index.html">Home</a></li>
-                <li><a href="register.html" class="btn btn-primary">Register</a></li>
-            </ul>
-        </div>
-    </nav>
 
-    <!-- LOGIN FORM -->
-    <div class="form-container">
-        <div class="form-header">
-            <h2>Welcome Back</h2>
-            <p>Login to access your account</p>
-        </div>
+<nav class="navbar">
+  <div class="container">
+    <a href="index.html" class="logo"><div class="logo-icon">JP</div>Job Portal</a>
+    <ul class="nav-links">
+      <li><a href="index.html">Home</a></li>
+      <li><a href="register.html" class="btn btn-primary">Register</a></li>
+    </ul>
+  </div>
+</nav>
 
-        <div id="message-container"></div>
+<div class="form-container">
+  <div class="form-header">
+    <h2>Welcome Back</h2>
+    <p>Login to access your account</p>
+  </div>
 
-        <form id="login-form">
-            <!-- Email -->
-            <div class="form-group">
-                <label for="email">Email Address</label>
-                <input type="email" id="email" name="email" class="form-control" placeholder="your.email@example.com" required autofocus>
-                <div id="email-error" class="error-message"></div>
-            </div>
+  <div id="msg-box"></div>
 
-            <!-- Password -->
-            <div class="form-group">
-                <label for="password">Password</label>
-                <input type="password" id="password" name="password" class="form-control" placeholder="Enter your password" required>
-                <div id="password-error" class="error-message"></div>
-            </div>
-
-            <!-- Submit Button -->
-            <button type="submit" id="login-btn" class="btn btn-primary" style="width: 100%; margin-top: 1.5rem;">
-                Login
-            </button>
-
-            <!-- Register Link -->
-            <p class="text-center mt-3" style="color: var(--text-secondary);">
-                Don't have an account? 
-                <a href="register.html" style="color: var(--primary-color); text-decoration: none; font-weight: 600;">Create one now</a>
-            </p>
-        </form>
+  <form id="login-form">
+    <div class="form-group">
+      <label for="email">Email Address</label>
+      <input type="email" id="email" class="form-control" placeholder="your@email.com" required autofocus>
+      <div class="field-error" id="email-err"></div>
     </div>
+    <div class="form-group">
+      <label for="password">Password</label>
+      <input type="password" id="password" class="form-control" placeholder="Enter your password" required>
+      <div class="field-error" id="password-err"></div>
+    </div>
+    <button type="submit" id="login-btn" class="btn btn-primary" style="width:100%;margin-top:1.5rem;">Login</button>
+    <p class="text-center mt-3" style="color:var(--text-secondary);">
+      Don't have an account?
+      <a href="register.html" style="color:var(--primary-color);text-decoration:none;font-weight:600;">Create one now</a>
+    </p>
+  </form>
+</div>
 
-    <!-- FOOTER -->
-    <footer class="footer">
-        <div class="container">
-            <div class="footer-bottom">
-                <p>&copy; 2026 Job Portal - AMDOX Internship Project</p>
-            </div>
-        </div>
-    </footer>
+<footer class="footer"><div class="container"><div class="footer-bottom">
+  <p>&copy; 2026 Job Portal - AMDOX Internship Project</p>
+</div></div></footer>
 
-    <script src="assets/js/main.js"></script>
+<!-- config.js MUST be first — it sets window.API_BASE automatically -->
+<script src="assets/js/config.js"></script>
+<script>
+document.getElementById('login-form').addEventListener('submit', async function(e) {
+  e.preventDefault();
+  clearAll();
+
+  const email    = document.getElementById('email').value.trim();
+  const password = document.getElementById('password').value;
+
+  // Validate
+  let ok = true;
+  if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    showFieldErr('email', 'Please enter a valid email address'); ok = false;
+  }
+  if (!password) {
+    showFieldErr('password', 'Password is required'); ok = false;
+  }
+  if (!ok) return;
+
+  const btn = document.getElementById('login-btn');
+  btn.disabled = true;
+  btn.textContent = 'Logging in…';
+
+  const loginUrl = window.API_BASE + '/auth/login.php';
+  console.log('POST →', loginUrl);
+
+  try {
+    const response = await fetch(loginUrl, {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+      body:    JSON.stringify({ email, password })
+    });
+
+    const text = await response.text();
+    console.log('Raw response:', text);
+
+    let data;
+    try { data = JSON.parse(text); }
+    catch (_) {
+      showMsg('Server error — unexpected response:<br><code>' + escHtml(text.substring(0, 400)) + '</code>', true);
+      btn.disabled = false; btn.textContent = 'Login';
+      return;
+    }
+
+    if (data.success) {
+      localStorage.setItem('jp_user', JSON.stringify(data.user));
+      showMsg('✅ Login successful! Redirecting…', false);
+      setTimeout(() => window.location.href = 'dashboard.html', 1200);
+    } else {
+      showMsg(data.error || 'Invalid email or password.', true);
+      btn.disabled = false; btn.textContent = 'Login';
+    }
+
+  } catch (err) {
+    console.error('Fetch error:', err);
+    const apiUrl = window.API_BASE + '/auth/login.php';
+    showMsg(
+      '<strong>⚠️ Cannot reach the server!</strong><br><br>' +
+      'API URL tried: <code>' + apiUrl + '</code><br><br>' +
+      '<strong>Your URL is:</strong> <code>' + window.location.href + '</code><br><br>' +
+      (window.location.port === '8000'
+        ? '👉 PHP server is not running!<br>Open CMD → <code>cd backend</code> → <code>php -S localhost:8000</code>'
+        : '👉 Make sure XAMPP Apache + MySQL are both started and <strong>green</strong>.'
+      ),
+      true
+    );
+    btn.disabled = false; btn.textContent = 'Login';
+  }
+});
+
+function showMsg(html, isError) {
+  document.getElementById('msg-box').innerHTML =
+    '<div class="' + (isError ? 'msg-error' : 'msg-success') + '">' + html + '</div>';
+}
+function showFieldErr(id, msg) {
+  const el = document.getElementById(id + '-err');
+  const inp = document.getElementById(id);
+  if (el)  { el.textContent = msg; el.classList.add('show'); }
+  if (inp) inp.classList.add('error');
+}
+function clearAll() {
+  document.querySelectorAll('.field-error').forEach(e => { e.textContent = ''; e.classList.remove('show'); });
+  document.querySelectorAll('input.error').forEach(e => e.classList.remove('error'));
+  document.getElementById('msg-box').innerHTML = '';
+}
+function escHtml(s) {
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+</script>
 </body>
 </html>

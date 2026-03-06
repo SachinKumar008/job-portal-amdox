@@ -106,3 +106,13 @@ INSERT INTO users (email, password, user_type, full_name) VALUES
 -- Insert employer profile for demo user
 INSERT INTO employer_profiles (user_id, company_name) VALUES
 (1, 'Demo Company');
+
+
+USE job_portal;
+
+-- The resume_path column already exists in job_seeker_profiles
+-- Just verifying the structure is correct
+
+-- Check if we need to add it (this will fail silently if it exists)
+ALTER TABLE job_seeker_profiles 
+  ADD COLUMN IF NOT EXISTS resume_path VARCHAR(500) NULL AFTER user_id;

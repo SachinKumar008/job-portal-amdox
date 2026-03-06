@@ -1,0 +1,28 @@
+{
+    "version": 2,
+    "name": "job-portal-amdox",
+    "builds": [
+      {
+        "src": "frontend/**",
+        "use": "@vercel/static"
+      }
+    ],
+    "routes": [
+      {
+        "src": "/assets/(.*)",
+        "dest": "/frontend/assets/$1"
+      },
+      {
+        "src": "/(.*\\.html)",
+        "dest": "/frontend/$1"
+      },
+      {
+        "src": "/",
+        "dest": "/frontend/index.html"
+      },
+      {
+        "src": "/(.*)",
+        "dest": "/frontend/$1"
+      }
+    ]
+  }
