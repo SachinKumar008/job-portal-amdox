@@ -1,0 +1,30 @@
+services:
+  - type: web
+    name: job-portal
+    env: php
+    buildCommand: composer install --no-dev
+    startCommand: php -S 0.0.0.0:$PORT -t .
+    envVars:
+      - key: DB_HOST
+        fromDatabase:
+          name: jobportal
+          property: host
+      - key: DB_NAME
+        fromDatabase:
+          name: jobportal
+          property: database
+      - key: DB_USER
+        fromDatabase:
+          name: jobportal
+          property: user
+      - key: DB_PASSWORD
+        fromDatabase:
+          name: jobportal
+          property: password
+      - key: DB_PORT
+        value: 5432
+
+databases:
+  - name: jobportal
+    databaseName: jobportal
+    user: jobportal
